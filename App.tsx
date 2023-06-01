@@ -1,43 +1,61 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, {useEffect, useState} from 'react';
 
-import React, { useEffect, useState } from 'react';
-import type { PropsWithChildren } from 'react';
 import {
   FlatList,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {
-  Colors,
-} from 'react-native/Libraries/NewAppScreen';
+const STORAGE_KEY = '@todos';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-
+interface todoType {
+  id: string;
+  text: string;
+  completed: boolean;
+}
 
 function App(): JSX.Element {
-  const [todos, setTodos] = useState([]);
-  const [newTodo, setNewTodo] = useState('');
+  const [todos, setTodos] = useState<todoType[]>([]);
+  const [newTodo, setNewTodo] = useState<string>('');
 
-   useEffect(() => {
+  const [editModalVisible, setEditModalVisible] = useState(false);
+const [editTodo, setEditTodo] = useState(null);
+
+  useEffect(() => {
     loadTodos();
   }, []);
 
   useEffect(() => {
     saveTodos();
   }, [todos]);
+
+  const changeStatus = (id: string) => {
+    setTodos([
+      ...todos.map(el => {
+        if (el.id == id) {
+          return {
+            ...el,
+            completed: !el.completed,
+          };
+        }
+        return el;
+      }),
+    ]);
+  };
+
+  const updateTodo = text => {
+    setTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo.id === editTodo.id ? {...todo, text: text} : todo,
+      ),
+    );
+    setEditModalVisible(false);
+    setEditTodo(null);
+  };
 
   const loadTodos = async () => {
     try {
@@ -62,28 +80,41 @@ function App(): JSX.Element {
     if (newTodo.trim() === '') {
       return; // Don't add empty todos
     }
-    const todo = { id: Date.now().toString(), text: newTodo, completed: false };
-    setTodos((prevTodos) => [...prevTodos, todo]);
+    const todo: todoType = {
+      id: Date.now().toString(),
+      text: newTodo,
+      completed: false,
+    };
+    setTodos(prevTodos => [...prevTodos, todo]);
     setNewTodo('');
   };
 
-  const toggleTodo = (id) => {
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
+  const toggleTodo = (id: string) => {
+    setTodos(prevTodos =>
+      prevTodos.map(todo =>
+        todo.id === id ? {...todo, completed: !todo.completed} : todo,
+      ),
     );
   };
 
-  const deleteTodo = (id) => {
-    setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+  const deleteTodo = (id: string) => {
+    setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
   };
 
-  const renderTodoItem = ({ item }) => (
+  const renderTodoItem = ({item}) => (
     <View style={styles.todoItem}>
       <TouchableOpacity onPress={() => toggleTodo(item.id)}>
-        <Text style={[styles.todoText, item.completed && styles.completedTodoText]}>
+        <Text
+          style={[styles.todoText, item.completed && styles.completedTodoText]}>
           {item.text}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => changeStatus(item.id)}>
+        <Text
+          style={
+            item.completed ? styles.statusCompleted : styles.statusIncompleted
+          }>
+          {item.completed ? 'completed' : 'pending'}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => deleteTodo(item.id)}>
@@ -94,26 +125,26 @@ function App(): JSX.Element {
 
   return (
     <View style={styles.container}>
-    <Text style={styles.title}>Todo App</Text>
-    <View style={styles.inputContainer}>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter a new todo"
-        value={newTodo}
-        onChangeText={(text) => setNewTodo(text)}
-        onSubmitEditing={addTodo}
+      <Text style={styles.title}>Todo App</Text>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter a new todo"
+          value={newTodo}
+          onChangeText={text => setNewTodo(text)}
+          onSubmitEditing={addTodo}
+        />
+        <TouchableOpacity style={styles.addButton} onPress={addTodo}>
+          <Text style={styles.addButtonLabel}>Add</Text>
+        </TouchableOpacity>
+      </View>
+      <FlatList
+        data={todos}
+        renderItem={renderTodoItem}
+        keyExtractor={item => item.id}
+        style={styles.todoList}
       />
-      <TouchableOpacity style={styles.addButton} onPress={addTodo}>
-        <Text style={styles.addButtonLabel}>Add</Text>
-      </TouchableOpacity>
     </View>
-    <FlatList
-      data={todos}
-      renderItem={renderTodoItem}
-      keyExtractor={(item) => item.id}
-      style={styles.todoList}
-    />
-  </View>
   );
 }
 
@@ -141,7 +172,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   addButton: {
-    backgroundColor: 'blue',
+    backgroundColor: 'teal',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -171,6 +202,12 @@ const styles = StyleSheet.create({
   deleteButton: {
     color: 'red',
     fontWeight: 'bold',
+  },
+  statusCompleted: {
+    color: 'green',
+  },
+  statusIncompleted: {
+    color: 'blue',
   },
 });
 
