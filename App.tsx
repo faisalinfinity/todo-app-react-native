@@ -2,11 +2,14 @@ import React, {useEffect, useState} from 'react';
 
 import {
   FlatList,
+  Modal,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
+  Keyboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -22,8 +25,8 @@ function App(): JSX.Element {
   const [todos, setTodos] = useState<todoType[]>([]);
   const [newTodo, setNewTodo] = useState<string>('');
 
-  const [editModalVisible, setEditModalVisible] = useState(false);
-const [editTodo, setEditTodo] = useState(null);
+  const [editModalVisible, setEditModalVisible] = useState<boolean>(false);
+  const [editTodo, setEditTodo] = useState<string>('');
 
   useEffect(() => {
     loadTodos();
@@ -32,6 +35,11 @@ const [editTodo, setEditTodo] = useState(null);
   useEffect(() => {
     saveTodos();
   }, [todos]);
+
+  const openEditModal = todo => {
+    setEditModalVisible(true);
+    setEditTodo(todo);
+  };
 
   const changeStatus = (id: string) => {
     setTodos([
@@ -47,14 +55,12 @@ const [editTodo, setEditTodo] = useState(null);
     ]);
   };
 
-  const updateTodo = text => {
+  const updateTodo = (id: string, text: string) => {
     setTodos(prevTodos =>
-      prevTodos.map(todo =>
-        todo.id === editTodo.id ? {...todo, text: text} : todo,
-      ),
+      prevTodos.map(todo => (todo.id === id ? {...todo, text: text} : todo)),
     );
     setEditModalVisible(false);
-    setEditTodo(null);
+    setEditTodo('');
   };
 
   const loadTodos = async () => {
@@ -117,9 +123,39 @@ const [editTodo, setEditTodo] = useState(null);
           {item.completed ? 'completed' : 'pending'}
         </Text>
       </TouchableOpacity>
+      <TouchableOpacity onPress={() => openEditModal(item)}>
+        <Text style={styles.editButton}>Edit</Text>
+      </TouchableOpacity>
       <TouchableOpacity onPress={() => deleteTodo(item.id)}>
         <Text style={styles.deleteButton}>Delete</Text>
       </TouchableOpacity>
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditModalVisible(false)}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            setEditModalVisible(false);
+            setEditTodo('');
+          }}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <TextInput
+                style={styles.editInput}
+                value={editTodo}
+                onChangeText={text => setEditTodo(text)}
+                onSubmitEditing={() => updateTodo(item.id, editTodo)}
+                autoFocus={true}
+              />
+              <TouchableOpacity onPress={() => updateTodo(item.id, editTodo)}>
+                <Text style={styles.updateButton}>Update</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 
@@ -208,6 +244,33 @@ const styles = StyleSheet.create({
   },
   statusIncompleted: {
     color: 'blue',
+  },
+  editButton: {
+    color: 'purple',
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 5,
+  },
+  editInput: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  updateButton: {
+    color: 'blue',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
